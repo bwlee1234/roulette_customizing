@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>운명의 수레바퀴</title>
+  <meta name="description" content="명단을 입력하고 원하는 인원만큼 1등부터 순서대로 당첨자를 뽑는 운명의 수레바퀴입니다.">
+  <meta property="og:title" content="운명의 수레바퀴">
+  <meta property="og:description" content="명단을 입력하고 원하는 인원만큼 1등부터 순서대로 당첨자를 뽑는 운명의 수레바퀴입니다.">
+  <meta property="og:type" content="website">
+
+  <link rel="apple-touch-icon" sizes="57x57" href="assets/apple-icon-57x57.png">
+  <link rel="apple-touch-icon" sizes="60x60" href="assets/apple-icon-60x60.png">
+  <link rel="apple-touch-icon" sizes="72x72" href="assets/apple-icon-72x72.png">
+  <link rel="apple-touch-icon" sizes="76x76" href="assets/apple-icon-76x76.png">
+  <link rel="apple-touch-icon" sizes="114x114" href="assets/apple-icon-114x114.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="assets/apple-icon-120x120.png">
+  <link rel="apple-touch-icon" sizes="144x144" href="assets/apple-icon-144x144.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="assets/apple-icon-152x152.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-icon-180x180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/android-icon-192x192.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="96x96" href="assets/favicon-96x96.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+  <link rel="manifest" href="assets/manifest.json">
+  <link rel="stylesheet" href="assets/style.scss">
+</head>
+<body>
+<script type="module" src="./src/index.ts"></script>
+
+<main id="settings" class="settings" aria-label="룰렛 설정">
+  <section class="panel-intro" aria-labelledby="appTitle">
+    <p class="eyebrow">Marble Roulette</p>
+    <h1 id="appTitle">운명의 수레바퀴</h1>
+    <p class="intro-copy">명단을 넣고 당첨 인원을 정하면, 1등부터 지정한 등수까지 winner로 선정합니다.</p>
+  </section>
+
+  <section class="panel-controls">
+    <label class="field field-names" for="in_names">
+      <span class="field-title">명단</span>
+      <textarea id="in_names" placeholder="쉼표 또는 줄바꿈으로 이름을 입력하세요. 예: 수박*2, 키위/3, 귤"></textarea>
+    </label>
+
+    <div class="control-row">
+      <label class="field field-count" for="in_winningCount">
+        <span class="field-title">당첨 인원</span>
+        <input type="number" id="in_winningCount" value="1" min="1" step="1" inputmode="numeric">
+      </label>
+
+      <label class="record-toggle" for="chkAutoRecording">
+        <input type="checkbox" id="chkAutoRecording">
+        <span class="record-shell">
+          <i class="icon record"></i>
+          <span>녹화</span>
+        </span>
+      </label>
+    </div>
+
+    <p id="statusText" class="status-text" aria-live="polite"></p>
+
+    <div class="actions">
+      <button id="btnShuffle" type="button" class="secondary">
+        <i class="icon shuffle"></i>
+        <span>섞기</span>
+      </button>
+      <button id="btnStart" type="button" class="primary">
+        <i class="icon play"></i>
+        <span>시작하기</span>
+      </button>
+    </div>
+  </section>
+</main>
+
+<footer class="copyright">
+  MIT License. Based on Marble Roulette by <a href="https://github.com/lazygyu/roulette" target="_blank" rel="noreferrer">lazygyu</a>.
+</footer>
+
+<script>
+  (() => {
+    const STORAGE_KEY = 'fortune_wheel_names';
+    const DEFAULT_NAMES = '수박*2,키위*2,귤*2';
+
+    const state = {
+      ready: false,
+      running: false,
+    };
+
+    function required(selector) {
+      const element = document.querySelector(selector);
+      if (!element) {
+        throw new Error(`Required element not found: ${selector}`);
+      }
+      return element;
+    }
+
+    function getNames() {
+      return required('#in_names')
+        .value.trim()
+        .split(/[,\r\n]/g)
+        .map((value) => value.trim())
+        .filter((value) => !!value);
+    }
+
+    function parseName(nameStr) {
+      const weightRegex = /\/(\d+)/;
+      const countRegex = /\*(\d+)/;
+      const name = (/^\s*([^/*]+)?/.exec(nameStr) || [])[1] || '';
+      const weight = weightRegex.test(nameStr) ? parseInt(weightRegex.exec(nameStr)[1], 10) : 1;
+      const count = countRegex.test(nameStr) ? parseInt(countRegex.exec(nameStr)[1], 10) : 1;
+      return {
+        name: name.trim(),
+        weight: Number.isFinite(weight) && weight > 0 ? weight : 1,
+        count: Number.isFinite(count) && count > 0 ? count : 0,
+      };
+    }
+
+    function getMaxMarbleCount() {
+      return window.roulette?.getMaxMarbleCount ? window.roulette.getMaxMarbleCount() : 500;
+    }
+
+    function readSavedNames() {
+      try {
+        return localStorage.getItem(STORAGE_KEY);
+      } catch (error) {
+        console.warn('[FortuneWheel] Unable to read saved names.', error);
+        return null;
+      }
+    }
+
+    function writeSavedNames(value) {
+      try {
+        localStorage.setItem(STORAGE_KEY, value);
+      } catch (error) {
+        console.warn('[FortuneWheel] Unable to save names.', error);
+      }
+    }
+
+    function normalizeNameList() {
+      const names = getNames();
+      const nameSet = new Set();
+      const nameCounts = {};
+      const maxCount = getMaxMarbleCount();
+      let totalCount = 0;
+
+      names.forEach((nameSrc) => {
+        const parsed = parseName(nameSrc);
+        if (!parsed.name || parsed.count < 1) return;
+        const availableCount = Math.max(0, maxCount - totalCount);
+        const safeCount = Math.min(parsed.count, availableCount);
+        if (safeCount < 1) return;
+        const key = parsed.weight > 1 ? `${parsed.name}/${parsed.weight}` : parsed.name;
+        if (!nameSet.has(key)) {
+          nameSet.add(key);
+          nameCounts[key] = 0;
+        }
+        nameCounts[key] += safeCount;
+        totalCount += safeCount;
+      });
+
+      const normalized = Object.keys(nameCounts).map((key) =>
+        nameCounts[key] > 1 ? `${key}*${nameCounts[key]}` : key
+      );
+      const nextValue = normalized.join(',');
+      const namesInput = required('#in_names');
+      if (namesInput.value !== nextValue) {
+        namesInput.value = nextValue;
+      }
+    }
+
+    function clampWinningCount(rawValue) {
+      const total = Math.max(window.roulette.getCount(), 1);
+      const parsed = Math.floor(Number(rawValue));
+      if (!Number.isFinite(parsed) || parsed < 1) return 1;
+      return Math.min(parsed, total);
+    }
+
+    function setWinningCount(rawValue) {
+      const winningInput = required('#in_winningCount');
+      const total = Math.max(window.roulette.getCount(), 1);
+      const winningCount = clampWinningCount(rawValue);
+      winningInput.max = String(total);
+      winningInput.value = String(winningCount);
+      window.options.winningCount = winningCount;
+      window.roulette.setWinningCount(winningCount);
+      updateStatus();
+    }
+
+    function updateStatus(message) {
+      const total = window.roulette?.getCount ? window.roulette.getCount() : 0;
+      const maxCount = getMaxMarbleCount();
+      const winningCount = Number(required('#in_winningCount').value) || 1;
+      const statusText = required('#statusText');
+      if (message) {
+        statusText.textContent = message;
+        return;
+      }
+      statusText.textContent =
+        total > 0
+          ? `참가 구슬 ${total}개 중 ${Math.min(winningCount, total)}명을 winner로 선정합니다.${total >= maxCount ? ` 최대 ${maxCount}개까지만 반영됩니다.` : ''}`
+          : '명단을 입력하면 시작할 수 있습니다.';
+    }
+
+    function setControlsEnabled(enabled) {
+      required('#in_names').disabled = !enabled;
+      required('#in_winningCount').disabled = !enabled;
+      required('#btnShuffle').disabled = !enabled;
+      required('#btnStart').disabled = !enabled || !state.ready;
+      const recording = required('#chkAutoRecording');
+      recording.disabled = !enabled || !window.roulette.isRecordingSupported();
+    }
+
+    function syncRecordingOption() {
+      const recording = required('#chkAutoRecording');
+      const enabled = recording.checked && !recording.disabled;
+      window.options.autoRecording = enabled;
+      window.roulette.setAutoRecording(enabled);
+    }
+
+    function prepareRoulette() {
+      const names = getNames();
+      window.roulette.setMarbles(names);
+      const total = window.roulette.getCount();
+      state.ready = total > 0;
+      writeSavedNames(names.join(','));
+      setWinningCount(required('#in_winningCount').value);
+      setControlsEnabled(!state.running);
+      return state.ready;
+    }
+
+    function renderResult(winners) {
+      if (!Array.isArray(winners) || winners.length === 0) {
+        updateStatus('추첨이 완료되었습니다.');
+        return;
+      }
+      const summary = winners.map((winner) => `${winner.rank}등 ${winner.name}`).join(', ');
+      updateStatus(`당첨자: ${summary}`);
+    }
+
+    function initialize() {
+      if (!window.roulette || !window.roulette.isReady) {
+        window.setTimeout(initialize, 100);
+        return;
+      }
+
+      window.options.useSkills = false;
+
+      const namesInput = required('#in_names');
+      const winningInput = required('#in_winningCount');
+      const recordingInput = required('#chkAutoRecording');
+      const startButton = required('#btnStart');
+      const shuffleButton = required('#btnShuffle');
+      const settingsPanel = required('#settings');
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const namesFromUrl = urlParams.get('names');
+      namesInput.value = namesFromUrl ? namesFromUrl.replace(/,/g, '\n') : readSavedNames() || DEFAULT_NAMES;
+
+      if (!window.roulette.isRecordingSupported()) {
+        recordingInput.checked = false;
+        recordingInput.disabled = true;
+        recordingInput.closest('.record-toggle')?.classList.add('disabled');
+      }
+
+      namesInput.addEventListener('input', () => {
+        if (state.running) return;
+        prepareRoulette();
+      });
+      namesInput.addEventListener('blur', () => {
+        if (state.running) return;
+        normalizeNameList();
+        prepareRoulette();
+      });
+      winningInput.addEventListener('change', () => {
+        setWinningCount(winningInput.value);
+      });
+      recordingInput.addEventListener('change', syncRecordingOption);
+      shuffleButton.addEventListener('click', () => {
+        if (!prepareRoulette()) return;
+        updateStatus('명단을 섞었습니다.');
+      });
+      startButton.addEventListener('click', () => {
+        if (!prepareRoulette()) return;
+        state.running = true;
+        syncRecordingOption();
+        setControlsEnabled(false);
+        settingsPanel.classList.add('hide');
+        window.roulette.start();
+      });
+
+      window.roulette.addEventListener('goal', (event) => {
+        state.running = false;
+        renderResult(event.detail?.winners);
+        window.setTimeout(() => {
+          settingsPanel.classList.remove('hide');
+          setControlsEnabled(true);
+        }, 1800);
+      });
+
+      window.roulette.addEventListener('message', (event) => {
+        updateStatus(event.detail);
+      });
+
+      prepareRoulette();
+      syncRecordingOption();
+    }
+
+    document.addEventListener('DOMContentLoaded', initialize);
+  })();
+</script>
+</body>
+</html>
