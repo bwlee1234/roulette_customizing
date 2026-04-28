@@ -219,17 +219,75 @@ export class RouletteRenderer {
     });
   }
 
+  private getCanvasToCssScale(): number {
+    const canvasRect = this._canvas.getBoundingClientRect();
+    if (canvasRect.width <= 0) return this.sizeFactor || 1;
+    return this._canvas.width / canvasRect.width;
+  }
+
+  private getSettingsTopInCssPixels(): number | null {
+    const settingsElement = document.getElementById('settings');
+    if (!settingsElement) return null;
+
+    const canvasRect = this._canvas.getBoundingClientRect();
+    const settingsRect = settingsElement.getBoundingClientRect();
+    if (settingsRect.width <= 0 || settingsRect.height <= 0) return null;
+
+    const settingsTop = settingsRect.top - canvasRect.top;
+    if (!Number.isFinite(settingsTop)) return null;
+
+    return Math.max(0, settingsTop);
+  }
+
+  private fitText(text: string, maxWidth: number): string {
+    if (this.ctx.measureText(text).width <= maxWidth) return text;
+
+    const ellipsis = '...';
+    let low = 0;
+    let high = text.length;
+    while (low < high) {
+      const mid = Math.ceil((low + high) / 2);
+      if (this.ctx.measureText(`${text.slice(0, mid)}${ellipsis}`).width <= maxWidth) {
+        low = mid;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    return `${text.slice(0, low)}${ellipsis}`;
+  }
+
   private renderWinner({ selectedWinners, theme }: RenderParameters) {
     if (selectedWinners.length === 0) return;
 
     this.ctx.save();
-    const visibleWinners = selectedWinners.slice(0, 8);
-    const hiddenWinnerCount = selectedWinners.length - visibleWinners.length;
-    const rowHeight = 48;
-    const panelWidth = Math.min(600, this._canvas.width - 40);
-    const panelHeight = 112 + visibleWinners.length * rowHeight + (hiddenWinnerCount > 0 ? 34 : 0);
-    const panelX = this._canvas.width - panelWidth - 24;
-    const panelY = this._canvas.height - panelHeight - 24;
+    const scale = this.getCanvasToCssScale();
+    const canvasWidth = this._canvas.width / scale;
+    const canvasHeight = this._canvas.height / scale;
+    this.ctx.scale(scale, scale);
+
+    const visibleWinners = selectedWinners.slice(0, 10);
+    const margin = 18;
+    const settingsTop = this.getSettingsTopInCssPixels();
+    const bottomLimit =
+      settingsTop && settingsTop > canvasHeight * 0.35
+        ? Math.max(margin + 240, settingsTop - margin)
+        : canvasHeight - margin;
+    const availableHeight = Math.max(240, bottomLimit - margin);
+    const panelWidth = Math.min(560, canvasWidth - margin * 2);
+    const titleFontSize = Math.min(42, Math.max(24, Math.floor(availableHeight * 0.11)));
+    const titleTopPadding = Math.max(16, Math.floor(titleFontSize * 0.45));
+    const titleBlockHeight = titleTopPadding + titleFontSize + 18;
+    const bottomPadding = 16;
+    const rowHeight = Math.min(
+      48,
+      Math.max(24, Math.floor((availableHeight - titleBlockHeight - bottomPadding) / visibleWinners.length))
+    );
+    const nameFontSize = Math.max(16, Math.min(30, Math.floor(rowHeight * 0.68)));
+    const marbleSize = Math.max(18, Math.min(32, Math.floor(rowHeight * 0.72)));
+    const panelHeight = titleBlockHeight + visibleWinners.length * rowHeight + bottomPadding;
+    const panelX = Math.max(margin, canvasWidth - panelWidth - margin);
+    const panelY = Math.max(margin, margin + Math.floor((availableHeight - panelHeight) / 2));
 
     this.ctx.fillStyle = theme.winnerBackground;
     this.ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
@@ -238,18 +296,20 @@ export class RouletteRenderer {
     this.ctx.strokeStyle = theme.winnerOutline;
     this.ctx.textAlign = 'left';
     this.ctx.lineWidth = 3;
-    this.ctx.font = 'bold 42px sans-serif';
+    this.ctx.textBaseline = 'alphabetic';
+    this.ctx.font = `bold ${titleFontSize}px sans-serif`;
     const title = 'Winners';
+    const titleY = panelY + titleTopPadding + titleFontSize;
     if (theme.winnerOutline) {
-      this.ctx.strokeText(title, panelX + 24, panelY + 24);
+      this.ctx.strokeText(title, panelX + 24, titleY);
     }
-    this.ctx.fillText(title, panelX + 24, panelY + 24);
+    this.ctx.fillText(title, panelX + 24, titleY);
 
     visibleWinners.forEach((winner, index) => {
-      const y = panelY + 88 + index * rowHeight;
-      const marbleSize = 32;
+      const rowTop = panelY + titleBlockHeight + index * rowHeight;
+      const textY = rowTop + Math.floor((rowHeight + nameFontSize) / 2) - 2;
       const marbleX = panelX + 24;
-      const marbleY = y - 26;
+      const marbleY = rowTop + Math.floor((rowHeight - marbleSize) / 2);
       const marbleImage = this.getMarbleImage(winner.name);
 
       if (marbleImage) {
@@ -261,20 +321,15 @@ export class RouletteRenderer {
         this.ctx.fill();
       }
 
-      this.ctx.font = 'bold 30px sans-serif';
+      this.ctx.font = `bold ${nameFontSize}px sans-serif`;
       this.ctx.fillStyle = `hsl(${winner.hue} 100% ${theme.marbleLightness}%)`;
-      const text = `#${index + 1} ${winner.name}`;
+      const textX = marbleX + marbleSize + 16;
+      const text = this.fitText(`#${index + 1} ${winner.name}`, panelX + panelWidth - 24 - textX);
       if (theme.winnerOutline) {
-        this.ctx.strokeText(text, marbleX + marbleSize + 18, y);
+        this.ctx.strokeText(text, textX, textY);
       }
-      this.ctx.fillText(text, marbleX + marbleSize + 18, y);
+      this.ctx.fillText(text, textX, textY);
     });
-
-    if (hiddenWinnerCount > 0) {
-      this.ctx.font = 'bold 22px sans-serif';
-      this.ctx.fillStyle = theme.winnerText;
-      this.ctx.fillText(`+ ${hiddenWinnerCount} more`, panelX + 24, panelY + panelHeight - 34);
-    }
     this.ctx.restore();
   }
 }
