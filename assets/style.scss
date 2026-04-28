@@ -59,8 +59,8 @@ textarea:disabled {
 
 .icon {
   display: inline-block;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   background: currentColor;
   mask-position: center;
   mask-repeat: no-repeat;
@@ -82,18 +82,18 @@ textarea:disabled {
 
 .settings {
   position: fixed;
-  left: 24px;
-  bottom: 24px;
+  left: 16px;
+  bottom: 16px;
   z-index: 20;
   display: grid;
-  grid-template-columns: minmax(220px, 0.75fr) minmax(360px, 1.25fr);
-  gap: 22px;
-  width: min(980px, calc(100vw - 48px));
-  padding: 22px;
+  grid-template-columns: minmax(170px, 0.66fr) minmax(300px, 1.34fr);
+  gap: 16px;
+  width: min(800px, calc(100vw - 32px));
+  padding: 16px;
   color: var(--text-main);
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
-  border-radius: 28px;
+  border-radius: 22px;
   box-shadow: var(--panel-shadow);
   backdrop-filter: blur(18px) saturate(1.25);
   visibility: visible;
@@ -120,12 +120,12 @@ textarea:disabled {
   min-width: 0;
   flex-direction: column;
   justify-content: space-between;
-  padding: 6px 0 4px;
+  padding: 3px 0;
 
   .eyebrow {
-    margin: 0 0 12px;
+    margin: 0 0 10px;
     color: var(--accent-strong);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.16em;
     text-transform: uppercase;
@@ -133,18 +133,18 @@ textarea:disabled {
 
   h1 {
     margin: 0;
-    font-size: clamp(30px, 4.6vw, 54px);
+    font-size: clamp(26px, 3.2vw, 42px);
     font-weight: 900;
-    line-height: 0.98;
+    line-height: 1;
     letter-spacing: -0.07em;
   }
 
   .intro-copy {
-    max-width: 26rem;
-    margin: 18px 0 0;
+    max-width: 20rem;
+    margin: 14px 0 0;
     color: var(--text-muted);
-    font-size: 15px;
-    line-height: 1.65;
+    font-size: 13px;
+    line-height: 1.55;
     word-break: keep-all;
   }
 }
@@ -153,19 +153,19 @@ textarea:disabled {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 
 .field {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .field-title {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -176,7 +176,7 @@ input[type='number'] {
   color: var(--text-main);
   background: var(--control-bg);
   border: 1px solid var(--control-border);
-  border-radius: 18px;
+  border-radius: 15px;
   outline: none;
   transition:
     border-color 160ms ease,
@@ -191,16 +191,19 @@ input[type='number'] {
 }
 
 textarea {
-  min-height: 138px;
-  padding: 16px;
+  height: 106px;
+  min-height: 88px;
+  max-height: 132px;
+  padding: 12px;
   resize: vertical;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 input[type='number'] {
-  height: 56px;
-  padding: 0 16px;
-  font-size: 24px;
+  height: 46px;
+  padding: 0 12px;
+  font-size: 21px;
   font-weight: 900;
   text-align: center;
 }
@@ -208,13 +211,13 @@ input[type='number'] {
 .control-row {
   display: grid;
   grid-template-columns: minmax(150px, 1fr) minmax(140px, 0.72fr);
-  gap: 12px;
+  gap: 10px;
   align-items: end;
 }
 
 .record-toggle {
   display: flex;
-  min-height: 56px;
+  min-height: 46px;
   align-items: end;
 
   input {
@@ -228,14 +231,14 @@ input[type='number'] {
   .record-shell {
     display: flex;
     width: 100%;
-    height: 56px;
+    height: 46px;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 7px;
     color: var(--text-muted);
     background: var(--control-bg);
     border: 1px solid var(--control-border);
-    border-radius: 18px;
+    border-radius: 15px;
     transition:
       color 160ms ease,
       background 160ms ease,
@@ -254,26 +257,29 @@ input[type='number'] {
 }
 
 .status-text {
-  min-height: 22px;
+  min-height: 18px;
+  max-height: 42px;
   margin: 0;
+  overflow: auto;
   color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 12px;
+  line-height: 1.45;
+  scrollbar-width: thin;
 }
 
 .actions {
   display: grid;
   grid-template-columns: 0.9fr 1.1fr;
-  gap: 12px;
+  gap: 10px;
 }
 
 .actions button {
   display: inline-flex;
-  min-height: 58px;
+  min-height: 48px;
   align-items: center;
   justify-content: center;
   gap: 9px;
-  border-radius: 19px;
+  border-radius: 16px;
   font-weight: 900;
   transition:
     transform 160ms ease,
@@ -338,31 +344,32 @@ input[type='number'] {
   .settings {
     position: fixed;
     right: 12px;
-    bottom: 54px;
+    bottom: 48px;
     left: 12px;
     display: block;
     width: auto;
-    max-height: calc(100vh - 76px);
-    padding: 16px;
+    max-height: calc(100vh - 68px);
+    padding: 14px;
     overflow: auto;
-    border-radius: 22px;
+    border-radius: 20px;
   }
 
   .panel-intro {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 
     h1 {
-      font-size: 34px;
+      font-size: 30px;
     }
 
     .intro-copy {
       margin-top: 10px;
-      font-size: 13px;
+      font-size: 12px;
     }
   }
 
   textarea {
-    min-height: 96px;
+    height: 92px;
+    min-height: 78px;
   }
 
   .control-row,
